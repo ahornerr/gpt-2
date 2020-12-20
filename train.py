@@ -112,10 +112,10 @@ def main(tpu_cluster=None):
         hparams['n_layer'] = args.n_layer
 
     if args.sample_length < 0:
-        args.sample_length = hparams.n_ctx - 1
-    if args.sample_length > hparams.n_ctx:
+        args.sample_length = hparams['n_ctx'] - 1
+    if args.sample_length > hparams['n_ctx']:
         raise ValueError(
-            "Can't get samples longer than window size: %s" % hparams.n_ctx)
+            "Can't get samples longer than window size: %s" % hparams['n_ctx'])
 
     if args.model_name == '345M':
         args.memory_saving_gradients = True
