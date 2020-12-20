@@ -101,7 +101,7 @@ def randomize(context, hparams, p):
 def main(tpu_cluster=None):
     args = parser.parse_args()
     BUCKET = args.storage_bucket if tpu_cluster else ''
-    enc = encoder.get_encoder(args.model_name)
+    enc = encoder.get_encoder(args.model_name, 'models')
     hparams = model.default_hparams()
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
