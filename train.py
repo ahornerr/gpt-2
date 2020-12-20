@@ -171,7 +171,8 @@ def main(tpu_cluster=None):
 
         if tpu_cluster:
             # https://pulsejet.github.io/blog/posts/tpu-without-estimator/
-            from tensorflow.contrib.tpu.python.tpu import tpu_function
+            # tensorflow.python.tpu.tpu_function
+            from tensorflow.python.tpu import tpu_function
             #tpu_function.get_tpu_context().set_number_of_shards(8)
             #opt = tf.contrib.tpu.CrossShardOptimizer(opt)
 
