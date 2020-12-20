@@ -10,8 +10,10 @@ import tensorflow as tf
 import time
 import tqdm
 from tensorflow.core.protobuf import rewriter_config_pb2
-from tensorflow.contrib import tpu
-from tensorflow.contrib.cluster_resolver import TPUClusterResolver
+# from tensorflow.contrib import tpu
+from tensorflow import tpu
+# from tensorflow.contrib.cluster_resolver import TPUClusterResolver
+from tensorflow.distribute.cluster_resolver import TPUClusterResolver
 
 import model, sample, encoder
 from load_dataset import load_dataset, Sampler
@@ -31,6 +33,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--dataset', metavar='PATH', type=str, required=True, help='Input file, directory, or glob pattern (utf-8 text, or preencoded .npz files).')
 parser.add_argument('--model_name', metavar='MODEL', type=str, default='117M', help='Pretrained model name')
 parser.add_argument('--combine', metavar='CHARS', type=int, default=50000, help='Concatenate input files with <|endoftext|> separator into chunks of this minimum size')
+parser.add_argument('--encoding', type=str, default='utf-8', help='Set the encoding for reading and writing files.')
 
 parser.add_argument('--batch_size', metavar='SIZE', type=int, default=1, help='Batch size')
 parser.add_argument('--learning_rate', metavar='LR', type=float, default=0.00002, help='Learning rate for Adam')
@@ -46,13 +49,13 @@ parser.add_argument('--top_p', type=float, default=0.0, help='P for top-p sampli
 parser.add_argument('--restore_from', type=str, default='latest', help='Either "latest", "fresh", or a path to a checkpoint file')
 parser.add_argument('--run_name', type=str, default='run1', help='Run id. Name of subdirectory in checkpoint/ and samples/')
 parser.add_argument('--sample_every', metavar='N', type=int, default=100, help='Generate samples every N steps')
-parser.add_argument('--sample_length', metavar='TOKENS', type=int, default=-1, help='Sample this many tokens')
+parser.add_argument('--sample_length', metavar='TOKENS', type=int, default=1023, help='Sample this many tokens')
 parser.add_argument('--sample_num', metavar='N', type=int, default=1, help='Generate this many samples')
 parser.add_argument('--save_every', metavar='N', type=int, default=1000, help='Write a checkpoint every N steps')
 
 parser.add_argument('--val_dataset', metavar='PATH', type=str, default=None, help='Dataset for validation loss, defaults to --dataset.')
-parser.add_argument('--val_batch_size', metavar='SIZE', type=int, default=1, help='Batch size for validation.')
-parser.add_argument('--val_batch_count', metavar='N', type=int, default=80, help='Number of batches for validation.')
+parser.add_argument('--val_batch_size', metavar='SIZE', type=int, default=2, help='Batch size for validation.')
+parser.add_argument('--val_batch_count', metavar='N', type=int, default=40, help='Number of batches for validation.')
 parser.add_argument('--val_every', metavar='STEPS', type=int, default=0, help='Calculate validation loss every STEPS steps.')
 
 parser.add_argument('--storage_bucket', metavar='BUCKET', type=str, default='gs://sgappa-multi/gpt-2/', help='Cloud storage bucket name (when using TPU)')
@@ -103,10 +106,10 @@ def main(tpu_cluster=None):
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
     if args.fresh_model:
-        hparams.n_ctx=args.n_ctx
-        hparams.n_embd=args.n_embd
-        hparams.n_head=args.n_head
-        hparams.n_layer=args.n_layer
+        hparams['n_ctx'] = args.n_ctx
+        hparams['n_embd'] = args.n_embd
+        hparams['n_head'] = args.n_head
+        hparams['n_layer'] = args.n_layer
 
     if args.sample_length < 0:
         args.sample_length = hparams.n_ctx - 1
@@ -165,7 +168,7 @@ def main(tpu_cluster=None):
             opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
         else:
             exit('Bad optimizer:', args.optimizer)
-        
+
         if tpu_cluster:
             # https://pulsejet.github.io/blog/posts/tpu-without-estimator/
             from tensorflow.contrib.tpu.python.tpu import tpu_function
@@ -222,10 +225,10 @@ def main(tpu_cluster=None):
             saver.restore(sess, ckpt)
 
         print('Loading dataset...')
-        chunks = load_dataset(enc, args.dataset, args.combine)
+        chunks = load_dataset(enc, args.dataset, args.combine, encoding=args.encoding)
         data_sampler = Sampler(chunks)
         if args.val_every > 0:
-            val_chunks = load_dataset(enc, args.val_dataset, args.combine) if args.val_dataset else chunks
+            val_chunks = load_dataset(enc, args.val_dataset, args.combine, encoding=args.encoding) if args.val_dataset else chunks
         print('dataset has', data_sampler.total_size, 'tokens')
         print('Training...')
 
@@ -332,7 +335,7 @@ def main(tpu_cluster=None):
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             with open(
                     os.path.join(SAMPLE_DIR, args.run_name,
-                                 'samples-{}').format(counter), 'w') as fp:
+                                 'samples-{}').format(counter), 'w', encoding=args.encoding) as fp:
                 fp.write('\n'.join(all_text))
 
         def validation():
@@ -352,7 +355,7 @@ def main(tpu_cluster=None):
                     loss=v_val_loss))
 
         start_time = time.time()
-        
+
         def elapsed():
             return time.time() - start_time
 
