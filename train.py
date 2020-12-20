@@ -104,7 +104,7 @@ def main(tpu_cluster=None):
     enc = encoder.get_encoder(args.model_name, 'models')
     hparams = model.default_hparams()
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
-        hparams.override_from_dict(json.load(f))
+        hparams.update(json.load(f))
     if args.fresh_model:
         hparams['n_ctx'] = args.n_ctx
         hparams['n_embd'] = args.n_embd
