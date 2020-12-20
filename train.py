@@ -92,7 +92,7 @@ def maketree(path):
 def randomize(context, hparams, p):
     if p > 0:
         mask = tf.random.uniform(shape=tf.shape(context)) < p
-        noise = tf.random.uniform(shape=tf.shape(context), minval=0, maxval=hparams.n_vocab, dtype=tf.int32)
+        noise = tf.random.uniform(shape=tf.shape(context), minval=0, maxval=hparams['n_vocab'], dtype=tf.int32)
         return tf.where(mask, noise, context)
     else:
         return context
@@ -237,7 +237,7 @@ def main(tpu_cluster=None):
             # Sample from validation set once with fixed seed to make
             # it deterministic during training as well as across runs.
             val_data_sampler = Sampler(val_chunks, seed=1)
-            val_batches = [[val_data_sampler.sample(hparams.n_ctx) for _ in range(args.val_batch_size)]
+            val_batches = [[val_data_sampler.sample(hparams['n_ctx']) for _ in range(args.val_batch_size)]
                            for _ in range(args.val_batch_count)]
 
         counter = 1
@@ -364,13 +364,13 @@ def main(tpu_cluster=None):
             print('[{counter} | {time:2.4f}] {msg}'.format(counter=counter, time=elapsed(), msg=msg))
 
         def sample_batch():
-            #return [data_sampler.sample(hparams.n_ctx) for _ in range(args.batch_size)]
+            #return [data_sampler.sample(hparams['n_ctx']) for _ in range(args.batch_size)]
             #say('Sampling batch...')
             r = []
             times = []
             for _ in range(args.batch_size):
                 start = time.time()
-                sample = data_sampler.sample(hparams.n_ctx)
+                sample = data_sampler.sample(hparams['n_ctx'])
                 end = time.time()
                 elapsed = (end - start)
                 r += [sample]
