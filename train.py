@@ -144,7 +144,7 @@ def main(tpu_cluster=None):
             val_loss = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     labels=val_context[:, 1:], logits=val_output['logits'][:, :-1]))
-            val_loss_summary = tf.summary.scalar('val_loss', val_loss)
+            val_loss_summary = tf.compat.v1.summary.scalar('val_loss', val_loss)
 
 
         tf_sample = sample.sample_sequence(
@@ -185,7 +185,7 @@ def main(tpu_cluster=None):
             opt_reset = opt.reset()
             opt_compute = opt.compute_gradients(loss)
             opt_apply = opt.apply_gradients()
-            summary_loss = tf.summary.scalar('loss', opt_apply)
+            summary_loss = tf.compat.v1.summary.scalar('loss', opt_apply)
         else:
             # if args.memory_saving_gradients:
                 # opt_grads = memory_saving_gradients.gradients(loss, train_vars)
@@ -193,9 +193,9 @@ def main(tpu_cluster=None):
             opt_grads = tf.gradients(loss, train_vars)
             opt_grads = list(zip(opt_grads, train_vars))
             opt_apply = opt.apply_gradients(opt_grads)
-            summary_loss = tf.summary.scalar('loss', loss)
+            summary_loss = tf.compat.v1.summary.scalar('loss', loss)
 
-        summary_lr = tf.summary.scalar('learning_rate', args.learning_rate)
+        summary_lr = tf.compat.v1.summary.scalar('learning_rate', args.learning_rate)
         summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
         summary_log = tf.compat.v1.summary.FileWriter(
