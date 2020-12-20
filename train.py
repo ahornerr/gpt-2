@@ -122,16 +122,16 @@ def main(tpu_cluster=None):
         if args.optimizer == 'adam':
             args.only_train_transformer_layers = True
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     config.graph_options.rewrite_options.layout_optimizer = rewriter_config_pb2.RewriterConfig.OFF
-    with tf.Session(tpu_cluster, config=config) as sess:
+    with tf.compat.v1.Session(tpu_cluster, config=config) as sess:
         if tpu_cluster and args.init_tpu:
             print("initializing TPU system...")
-            sess.run(tpu.initialize_system())
+            sess.run(tf.compat.v1.tpu.initialize_system())
         if tpu_cluster:
             print("Using TPU %s" % tpu_cluster)
-        context = tf.placeholder(tf.int32, [args.batch_size, None])
+        context = tf.compat.v1.placeholder(tf.int32, [args.batch_size, None])
         context_in = randomize(context, hparams, args.noise)
         output = model.model(hparams=hparams, X=context_in)
         loss = tf.reduce_mean(
@@ -139,7 +139,7 @@ def main(tpu_cluster=None):
                 labels=context[:, 1:], logits=output['logits'][:, :-1]))
 
         if args.val_every > 0:
-            val_context = tf.placeholder(tf.int32, [args.val_batch_size, None])
+            val_context = tf.compat.v1.placeholder(tf.int32, [args.val_batch_size, None])
             val_output = model.model(hparams=hparams, X=val_context)
             val_loss = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -156,16 +156,16 @@ def main(tpu_cluster=None):
             top_k=args.top_k,
             top_p=args.top_p)
 
-        all_vars = [v for v in tf.trainable_variables() if 'model' in v.name]
+        all_vars = [v for v in tf.compat.v1.trainable_variables() if 'model' in v.name]
         train_vars = [v for v in all_vars if '/h' in v.name] if args.only_train_transformer_layers else all_vars
 
         parameter_count = sum([np.prod(v.shape.as_list()) for v in train_vars])
         print("This model is using %d parameters (%.2fM)" % (parameter_count, parameter_count/(1024.0*1024.0)))
 
         if args.optimizer == 'adam':
-            opt = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
+            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=args.learning_rate)
         elif args.optimizer == 'sgd':
-            opt = tf.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
+            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=args.learning_rate)
         else:
             exit('Bad optimizer:', args.optimizer)
 
@@ -195,16 +195,16 @@ def main(tpu_cluster=None):
             summary_loss = tf.summary.scalar('loss', loss)
 
         summary_lr = tf.summary.scalar('learning_rate', args.learning_rate)
-        summaries = tf.summary.merge([summary_lr, summary_loss])
+        summaries = tf.compat.v1.summary.merge([summary_lr, summary_loss])
 
-        summary_log = tf.summary.FileWriter(
+        summary_log = tf.compat.v1.summary.FileWriter(
             os.path.join(CHECKPOINT_DIR, args.run_name))
 
-        saver = tf.train.Saver(
+        saver = tf.compat.v1.train.Saver(
             var_list=all_vars,
             max_to_keep=5,
             keep_checkpoint_every_n_hours=2)
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
 
         if args.restore_from == 'latest':
             ckpt = tf.train.latest_checkpoint(
@@ -259,7 +259,7 @@ def main(tpu_cluster=None):
                 print('Loading', out)
                 xs = np.load(out, allow_pickle=True)
                 for k, v in xs:
-                    vs = tf.trainable_variables()
+                    vs = tf.compat.v1.trainable_variables()
                     for x in vs:
                         if x.name == k:
                             print('Loading', k, v.shape)
@@ -274,7 +274,7 @@ def main(tpu_cluster=None):
         def save_tpu():
             maketree(os.path.join(CHECKPOINT_DIR, args.run_name))
             i = 0
-            vs = tf.trainable_variables()
+            vs = tf.compat.v1.trainable_variables()
             seen = set()
             while True:
                 out = os.path.join(CHECKPOINT_DIR, args.run_name, 'model-{}-{}.npy').format(counter, i)
@@ -432,7 +432,7 @@ def main(tpu_cluster=None):
                 save()
         if tpu_cluster and args.init_tpu:
             print('Shutting down TPU system...')
-            sess.run(tpu.shutdown_system())
+            sess.run(tf.compat.v1.tpu.shutdown_system())
 
 def main_tpu():
     # Get the TPU's location
