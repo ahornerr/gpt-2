@@ -18,7 +18,7 @@ from tensorflow.distribute.cluster_resolver import TPUClusterResolver
 import model, sample, encoder
 from load_dataset import load_dataset, Sampler
 from accumulate import AccumulatingOptimizer
-import memory_saving_gradients
+# import memory_saving_gradients
 from glob import glob
 import re
 
@@ -186,10 +186,10 @@ def main(tpu_cluster=None):
             opt_apply = opt.apply_gradients()
             summary_loss = tf.summary.scalar('loss', opt_apply)
         else:
-            if args.memory_saving_gradients:
-                opt_grads = memory_saving_gradients.gradients(loss, train_vars)
-            else:
-                opt_grads = tf.gradients(loss, train_vars)
+            # if args.memory_saving_gradients:
+                # opt_grads = memory_saving_gradients.gradients(loss, train_vars)
+            # else:
+            opt_grads = tf.gradients(loss, train_vars)
             opt_grads = list(zip(opt_grads, train_vars))
             opt_apply = opt.apply_gradients(opt_grads)
             summary_loss = tf.summary.scalar('loss', loss)
